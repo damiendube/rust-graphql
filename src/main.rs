@@ -59,15 +59,13 @@ impl Handler<GraphQLData> for GraphQLExecutor {
 }
 
 fn graphiql(_req: &HttpRequest<AppState>) -> Result<HttpResponse, Error> {
-    let html = graphiql_source("http://127.0.0.1:8080/graphql");
+    let html = graphiql_source("/graphql");
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(html))
 }
 
-fn graphql(
-    (st, data): (State<AppState>, Json<GraphQLData>),
-) -> FutureResponse<HttpResponse> {
+fn graphql((st, data): (State<AppState>, Json<GraphQLData>)) -> FutureResponse<HttpResponse> {
     st.executor
         .send(data.0)
         .from_err()
@@ -90,14 +88,17 @@ fn main() {
 
     // Start http server
     server::new(move || {
-        App::with_state(AppState{executor: addr.clone()})
-            // enable logger
-            .middleware(middleware::Logger::default())
-            .resource("/graphql", |r| r.method(http::Method::POST).with(graphql))
-            .resource("/graphiql", |r| r.method(http::Method::GET).h(graphiql))
-    }).bind("0.0.0.0:8080")
-        .unwrap()
-        .start();
+        App::with_state(AppState {
+            executor: addr.clone(),
+        })
+        // enable logger
+        .middleware(middleware::Logger::default())
+        .resource("/graphql", |r| r.method(http::Method::POST).with(graphql))
+        .resource("/graphiql", |r| r.method(http::Method::GET).h(graphiql))
+    })
+    .bind("0.0.0.0:8080")
+    .unwrap()
+    .start();
 
     println!("Started http server: 0.0.0.0:8080");
     let _ = sys.run();
